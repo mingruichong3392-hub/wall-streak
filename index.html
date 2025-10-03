@@ -4,14 +4,117 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Wall Streak — Keep your streak, beat the Street</title>
+  <meta name="description" content="Wall Streak — your daily market puzzle. Keep your streak, beat the Street." />
+  <!-- Social cards -->
   <meta property="og:title" content="Wall Streak — Keep your streak, beat the Street" />
-  <meta property="og:description" content="Your daily market puzzle. Monday–Saturday." />
+  <meta property="og:description" content="Your daily market puzzle. Launching Monday." />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="og-image.png" />
   <meta name="twitter:card" content="summary_large_image" />
+  <!-- Tailwind for quick styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🔥</text></svg>">
+  <style>
+    .card { @apply rounded-2xl border border-slate-200 bg-white/80 backdrop-blur p-5 shadow; }
+    .btn  { @apply px-5 py-3 rounded-xl font-semibold shadow active:translate-y-px transition; }
+    .btn-primary { @apply bg-emerald-600 text-white hover:bg-emerald-700; }
+    .tag { @apply inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700; }
+  </style>
 </head>
-<body>
-  <h1>Wall Streak</h1>
-  <p>Your daily market puzzle — coming soon!</p>
+<body class="min-h-screen bg-slate-50 text-slate-900">
+  <div class="mx-auto max-w-xl px-4 py-8">
+    <!-- Header -->
+    <header class="mb-6 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="text-2xl">🔥</div>
+        <div>
+          <h1 class="text-2xl font-extrabold tracking-tight">WALL STREAK</h1>
+          <p class="text-xs text-slate-500 -mt-1">Keep your streak, beat the Street</p>
+        </div>
+      </div>
+      <div class="tag">Streak: <span>—</span> 🔥</div>
+    </header>
+
+    <!-- Coming soon card styled like the game -->
+    <main class="card">
+      <p class="mb-2 text-sm text-slate-500">Theme: <span class="font-medium">—</span></p>
+      <h2 class="text-xl font-extrabold mb-1">Launching Monday</h2>
+      <p class="text-slate-600 mb-4">Your daily market puzzle is almost here. Come back when the bell rings!</p>
+
+      <!-- Fake puzzle UI (disabled) -->
+      <div class="mb-4">
+        <p class="font-semibold mb-2">Sample prompt</p>
+        <p class="mb-3 text-slate-700">
+          This company trades at a P/E of 12, below its sector average of 25. Guess the ticker.
+        </p>
+        <input disabled
+               placeholder="INTC"
+               class="w-full rounded-xl border border-slate-300 px-4 py-3 bg-slate-100 text-slate-400">
+      </div>
+
+      <div class="flex items-center gap-3">
+        <button disabled class="btn btn-primary opacity-60 cursor-not-allowed">Submit</button>
+        <button disabled class="btn opacity-60 cursor-not-allowed">Give up & reveal</button>
+      </div>
+
+      <!-- Countdown -->
+      <div class="mt-5 rounded-xl border border-amber-300 bg-amber-50 p-4">
+        <div class="text-amber-700 font-black tracking-wide text-sm mb-1">COUNTDOWN TO OPEN</div>
+        <p class="text-amber-900 text-lg font-semibold">
+          <span id="countdown">Calculating…</span>
+        </p>
+        <p class="text-amber-900 text-sm mt-1">Puzzles run Monday–Saturday. Sunday is a rest day.</p>
+      </div>
+    </main>
+
+    <!-- Share teaser -->
+    <section class="card mt-6">
+      <p class="font-semibold">Share the tease</p>
+      <p class="text-sm text-slate-600 mb-3">Tell your friends to be ready to “beat the Street.”</p>
+      <button id="shareBtn" class="btn">Share coming-soon</button>
+    </section>
+
+    <footer class="mt-10 text-center text-xs text-slate-400">© <span id="year"></span> Wall Streak — MVP preview</footer>
+  </div>
+
+  <script>
+    // Set year
+    document.getElementById('year').textContent = new Date().getFullYear();
+
+    // Countdown to next Monday 00:00 local time
+    function nextMondayMidnight() {
+      const now = new Date();
+      const day = now.getDay(); // 0=Sun..6=Sat
+      // Days until Monday
+      const add = (8 - day) % 7 || 7; // always go to NEXT Monday
+      const target = new Date(now);
+      target.setDate(now.getDate() + add);
+      target.setHours(0, 0, 0, 0);
+      return target;
+    }
+    const target = nextMondayMidnight();
+
+    function tick() {
+      const now = new Date();
+      const diff = Math.max(0, target - now);
+      const s = Math.floor(diff / 1000);
+      const d = Math.floor(s / 86400);
+      const h = Math.floor((s % 86400) / 3600);
+      const m = Math.floor((s % 3600) / 60);
+      const ss = s % 60;
+      document.getElementById('countdown').textContent =
+        `${d}d ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+      if (diff <= 0) location.reload(); // when Monday arrives, refresh (you'll swap to real game)
+    }
+    tick();
+    setInterval(tick, 1000);
+
+    // Share teaser
+    const teaser = 'Wall Streak — daily market puzzle. Launching Monday. Keep your streak, beat the Street.';
+    document.getElementById('shareBtn').onclick = () => {
+      if (navigator.share) navigator.share({ text: teaser }).catch(()=>navigator.clipboard.writeText(teaser));
+      else { navigator.clipboard.writeText(teaser); alert('Copied! Paste anywhere to share.'); }
+    };
+  </script>
 </body>
 </html>
