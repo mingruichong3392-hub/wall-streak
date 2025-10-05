@@ -12,10 +12,7 @@
   <meta name="twitter:card" content="summary_large_image" />
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🔥</text></svg>">
-  <style>
-    /* plain CSS only (no @apply) */
-    .shadow-smooth { box-shadow: 0 1px 2px rgb(0 0 0 / 6%), 0 4px 12px rgb(0 0 0 / 6%); }
-  </style>
+  <style>.shadow-smooth{box-shadow:0 1px 2px rgb(0 0 0 / 6%),0 4px 12px rgb(0 0 0 / 6%)}</style>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900">
   <div class="mx-auto max-w-xl px-4 py-8">
@@ -43,8 +40,279 @@
 
     <!-- Puzzle -->
     <main id="puzzleCard" class="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur p-5 shadow-smooth">
-      <p class="mb-4 text-lg font-semibold"
+      <p class="mb-4 text-lg font-semibold" id="prompt">Loading today’s puzzle…</p>
+      <div id="mcqContainer" class="grid grid-cols-2 gap-3 mb-4"></div>
+      <div class="flex items-center gap-3">
+        <button id="revealBtn"
+          class="px-5 py-3 rounded-xl font-semibold border border-rose-300 bg-rose-100 text-rose-700 hover:bg-rose-200 shadow-smooth">
+          Give up & reveal
+        </button>
+      </div>
+      <p id="feedback" class="mt-4 text-sm font-semibold"></p>
+    </main>
 
+    <!-- Result Box -->
+    <section id="resultBox" class="hidden rounded-2xl p-5 border-2 mt-6">
+      <div id="resultTitle" class="text-xl font-extrabold flex items-center gap-2 mb-1"></div>
+      <p class="text-sm text-slate-700 mb-3">
+        Answer: <span id="answerText" class="font-semibold"></span>
+      </p>
+      <div class="rounded-xl border border-amber-300 bg-amber-50 p-4">
+        <div class="text-amber-700 font-black tracking-wide text-sm mb-1">STREET CHEAT OF THE DAY</div>
+        <p id="cheatText" class="text-amber-900"></p>
+      </div>
+      <div class="mt-4 flex flex-wrap items-center gap-3">
+        <button id="shareBtn" class="px-5 py-3 rounded-xl font-semibold bg-slate-100 hover:bg-slate-200 shadow-smooth">
+          Share result
+        </button>
+        <button id="doneBtn" class="px-5 py-3 rounded-xl font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-smooth">
+          Done
+        </button>
+      </div>
+    </section>
 
+    <!-- Streak Summary -->
+    <section id="summaryCard" class="hidden rounded-2xl border border-slate-200 bg-white/80 backdrop-blur p-5 shadow-smooth mt-6">
+      <h3 class="text-xl font-extrabold mb-2">Your Streak</h3>
+      <p class="text-slate-700 mb-4">
+        Current streak: <span id="summaryStreak" class="font-bold"></span> 🔥
+      </p>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 mb-4">
+        <p id="summaryLine" class="text-slate-700"></p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="shareAgainBtn" class="px-5 py-3 rounded-xl font-semibold bg-slate-100 hover:bg-slate-200 shadow-smooth">Share again</button>
+        <button id="backToTopBtn" class="px-5 py-3 rounded-xl font-semibold bg-white border border-slate-200 hover:bg-slate-50 shadow-smooth">Back to top</button>
+      </div>
+    </section>
 
+    <footer class="mt-10 text-center text-xs text-slate-400">
+      © <span id="year"></span> Wall Streak — MVP
+    </footer>
+  </div>
 
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // ---------- Utilities ----------
+      const $ = id => document.getElementById(id);
+      function normalize(s){ return (s||'').trim().toUpperCase(); }
+      function getUTCDateKey(){ const n=new Date(); return Date.UTC(n.getUTCFullYear(),n.getUTCMonth(),n.getUTCDate())/86400000; }
+      function nextMondayEndLocal(){
+        const now=new Date(); const dow=now.getDay();
+        const delta=(1 - dow + 7) % 7; const t=new Date(now);
+        t.setDate(now.getDate()+delta); t.setHours(23,59,59,999); return t;
+      }
+
+      // ---------- Puzzles ----------
+      const PUZZLES = [
+        { theme:"Market News",
+          prompt:"This US government announced a shutdown on the 30 September 2025. Since the 1980s, how many government shutdowns have there been?",
+          options:["8","10","12","15"],
+          answer:"10",
+          answerDisplay:"10",
+          cheat:"Government shutdowns are more frequent than most people think. Their impact on stocks is usually short-lived — no need for panic." },
+        { theme:"Valuation",
+          prompt:"This bank trades at a Price-to-Book ratio under 1.0, suggesting the market values it below its assets. Guess the ticker.",
+          options:["JPM","GS","C","MS"],
+          answer:"C",
+          answerDisplay:"C (Citigroup)",
+          cheat:"P/B ≈ 1 means market ≈ book value. Below 1 may signal undervaluation — or real risk. Always look beyond headlines." },
+        { theme:"Fundamental Analysis",
+          prompt:"This company’s revenue surged during the pandemic from e-commerce growth, but its operating margins remain thin. Guess the ticker.",
+          options:["AMZN","EBAY","SHOP","WMT"],
+          answer:"AMZN",
+          answerDisplay:"AMZN (Amazon)",
+          cheat:"Revenue growth is exciting, but profits pay the bills. Always also check net income, because investors / shareholders get paid last." },
+        { theme:"Technical Analysis",
+          prompt:"The stock’s 50-day moving average crossed above the 200-day moving average. What’s this signal called?",
+          options:["Golden Cross","Death Cross","Double Bottom","Breakout"],
+          answer:"Golden Cross",
+          answerDisplay:"Golden Cross",
+          cheat:"Technical signals like the Golden Cross show momentum shifts — but know whether you’re trading or investing." },
+        { theme:"Behavioral",
+          prompt:"An investor keeps buying meme stocks because everyone online is hyping them up. What bias is this?",
+          options:["Overconfidence","Anchoring","Herding","Recency"],
+          answer:"Herding",
+          answerDisplay:"Herding",
+          cheat:"Following the crowd can be costly. Ask if price moves are driven by fundamentals or just momentum." },
+        { theme:"Economics",
+          prompt:"This country reported inflation over 8% in 2022, leading its central bank to raise interest rates aggressively. Guess the country.",
+          options:["Germany","Japan","United States","UK"],
+          answer:"United States",
+          answerDisplay:"United States",
+          cheat:"High inflation usually forces rate hikes — cooling demand but pressuring housing and growth stocks." }
+      ];
+
+      // ---------- State ----------
+      const storage = {
+        get streak(){ return parseInt(localStorage.getItem('ws_streak')||'0',10); },
+        set streak(v){ localStorage.setItem('ws_streak', String(v)); },
+        get lastPlayedKey(){ return localStorage.getItem('ws_lastKey'); },
+        set lastPlayedKey(k){ localStorage.setItem('ws_lastKey', k); },
+      };
+
+      const els = {
+        themeLabel: $('themeLabel'),
+        dateLabel: $('dateLabel'),
+        streakVal: $('streakVal'),
+        prompt: $('prompt'),
+        mcqContainer: $('mcqContainer'),
+        revealBtn: $('revealBtn'),
+        feedback: $('feedback'),
+        resultBox: $('resultBox'),
+        resultTitle: $('resultTitle'),
+        answerText: $('answerText'),
+        cheatText: $('cheatText'),
+        shareBtn: $('shareBtn'),
+        doneBtn: $('doneBtn'),
+        summaryCard: $('summaryCard'),
+        summaryStreak: $('summaryStreak'),
+        summaryLine: $('summaryLine'),
+        shareAgainBtn: $('shareAgainBtn'),
+        backToTopBtn: $('backToTopBtn'),
+        year: $('year'),
+        puzzleCard: $('puzzleCard'),
+      };
+
+      // Meta text
+      const today = new Date();
+      els.year && (els.year.textContent = today.getFullYear());
+      els.dateLabel && (els.dateLabel.textContent =
+        today.toLocaleDateString(undefined,{weekday:'long',year:'numeric',month:'short',day:'numeric'}));
+
+      let lastResultWon = null;
+
+      // ---------- Choose today's puzzle (live-test Monday until next Mon 23:59) ----------
+      function themeForTodayNormal(){
+        const dow=new Date().getDay(); // 0..6
+        return ["Sunday","Market News","Valuation","Fundamental Analysis","Technical Analysis","Behavioral","Economics"][dow];
+      }
+      function chooseTodayPuzzle(){
+        const now=new Date(); const mondayEnd=nextMondayEndLocal();
+        if (now < mondayEnd){
+          const p=PUZZLES.find(x=>x.theme==="Market News");
+          return { key:String(getUTCDateKey()), puzzle:p, theme:"Market News" };
+        }
+        const theme=themeForTodayNormal();
+        if (theme==="Sunday") return null;
+        const p=PUZZLES.find(x=>x.theme===theme);
+        return { key:String(getUTCDateKey()), puzzle:p, theme };
+      }
+
+      const choice = chooseTodayPuzzle();
+      const currentKey = choice ? choice.key : null;
+
+      if (!choice){
+        els.puzzleCard.innerHTML = `
+          <div class="text-center">
+            <div class="text-4xl mb-2">😎</div>
+            <h2 class="text-xl font-bold">No puzzle today</h2>
+            <p class="text-slate-600">Wall Streak runs Monday–Saturday. See you tomorrow!</p>
+          </div>`;
+        els.themeLabel && (els.themeLabel.textContent = "Sunday — Rest Day");
+        return;
+      }
+
+      const p = choice.puzzle;
+      els.themeLabel && (els.themeLabel.textContent = choice.theme);
+      els.streakVal && (els.streakVal.textContent = storage.streak);
+
+      renderMCQ(p);
+      if (els.revealBtn) els.revealBtn.onclick = () => giveUp(p);
+      if (els.shareBtn)  els.shareBtn.onclick  = () => shareResult(p.theme, lastResultWon === true, p.cheat, storage.streak);
+      if (els.doneBtn)   els.doneBtn.onclick   = () => showSummary(choice.theme);
+      if (els.shareAgainBtn) els.shareAgainBtn.onclick = () => shareResult(choice.theme, lastResultWon === true, p.cheat, storage.streak);
+      if (els.backToTopBtn)  els.backToTopBtn.onclick  = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // ---------- Render MCQs ----------
+      function renderMCQ(p){
+        els.prompt.textContent = p.prompt;
+        els.feedback.textContent = '';
+        els.resultBox.className = 'hidden rounded-2xl p-5 border-2 mt-6';
+        els.summaryCard.classList.add('hidden');
+        els.mcqContainer.innerHTML = '';
+
+        const colors = [
+          'bg-indigo-100 border border-indigo-300 hover:bg-indigo-200 text-slate-900',
+          'bg-sky-100 border border-sky-300 hover:bg-sky-200 text-slate-900',
+          'bg-emerald-100 border border-emerald-300 hover:bg-emerald-200 text-slate-900',
+          'bg-amber-100 border border-amber-300 hover:bg-amber-200 text-slate-900'
+        ];
+
+        p.options.forEach((opt,i)=>{
+          const btn=document.createElement('button');
+          btn.className=`w-full rounded-xl px-4 py-3 text-center font-semibold transition shadow-smooth ${colors[i%colors.length]}`;
+          btn.textContent=opt;
+          btn.onclick=()=>checkMCQ(opt,p,btn);
+          els.mcqContainer.appendChild(btn);
+        });
+      }
+
+      function lockMCQ(){ Array.from(els.mcqContainer.children).forEach(b=>b.disabled=true); }
+
+      function checkMCQ(value,p,btnEl){
+        const correct = normalize(value) === normalize(p.answer);
+        if (correct){
+          btnEl.classList.add('border-emerald-500','bg-emerald-50');
+          if (storage.lastPlayedKey !== currentKey){
+            storage.streak = storage.streak + 1;
+            storage.lastPlayedKey = currentKey;
+          }
+          lastResultWon = true;
+          lockMCQ();
+          showResult(true,p);
+        } else {
+          btnEl.classList.add('border-rose-400','bg-rose-50');
+          els.feedback.textContent='Not quite — try again.';
+          lastResultWon = false;
+        }
+        els.streakVal.textContent = storage.streak;
+      }
+
+      function giveUp(p){
+        if (storage.lastPlayedKey !== currentKey){
+          storage.streak = 0;
+          storage.lastPlayedKey = currentKey;
+        }
+        els.streakVal.textContent = storage.streak;
+        lastResultWon = false;
+        lockMCQ();
+        showResult(false,p);
+      }
+
+      // ---------- Result box ----------
+      function showResult(won,p){
+        els.answerText.textContent = p.answerDisplay || p.answer;
+        els.cheatText.textContent  = p.cheat;
+
+        els.resultBox.classList.remove('hidden','bg-emerald-50','border-emerald-400','bg-rose-50','border-rose-400');
+        if (won){
+          els.resultBox.classList.add('bg-emerald-50','border-emerald-400');
+          els.resultTitle.innerHTML = `<span>✅</span><span>You beat the Street!</span>`;
+        } else {
+          els.resultBox.classList.add('bg-rose-50','border-rose-400');
+          els.resultTitle.innerHTML = `<span>❌</span><span>Today you got Street-schooled!</span>`;
+        }
+      }
+
+      // ---------- Summary ----------
+      function showSummary(theme){
+        els.summaryStreak.textContent = storage.streak;
+        const mark = lastResultWon ? '✅' : '❌';
+        els.summaryLine.textContent = `${theme}: ${mark} — Keep your streak, beat the Street!`;
+        els.summaryCard.classList.remove('hidden');
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }
+
+      // ---------- Share ----------
+      function shareResult(theme, won, cheat, streak){
+        const text = `Wall Streak ${streak} 🔥
+${theme}: ${won ? '✅' : '❌'}
+Street Cheat: ${cheat}`;
+        if (navigator.share) navigator.share({ text }).catch(()=>navigator.clipboard.writeText(text));
+        else { navigator.clipboard.writeText(text); alert('Result copied! Paste anywhere to share.'); }
+      }
+    });
+  </script>
+</body>
+</html>
