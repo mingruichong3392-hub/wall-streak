@@ -65,7 +65,10 @@
         <button id="shareBtn" class="px-5 py-3 rounded-xl font-semibold bg-slate-100 hover:bg-slate-200 shadow-smooth">
           Share result
         </button>
-        <button id="doneBtn" class="px-5 py-3 rounded-xl font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-smooth">
+        <button id="copyLinkResultBtn" class="px-5 py-3 rounded-xl font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-smooth">
+          Copy link 🔗
+        </button>
+        <button id="doneBtn" class="px-5 py-3 rounded-xl font-semibold bg-white border border-slate-200 hover:bg-slate-50 shadow-smooth">
           Done
         </button>
       </div>
@@ -159,6 +162,7 @@
         answerText: $('answerText'),
         cheatText: $('cheatText'),
         shareBtn: $('shareBtn'),
+        copyLinkResultBtn: $('copyLinkResultBtn'),
         doneBtn: $('doneBtn'),
         summaryCard: $('summaryCard'),
         summaryStreak: $('summaryStreak'),
@@ -191,16 +195,22 @@
       const choice = chooseTodayPuzzle();
       const currentKey = choice ? choice.key : null;
 
-      // NEW: One-try-per-day guard (full-screen message)
+      // One-try-per-day guard (full-screen with Copy Link)
       if (storage.lastPlayedKey === currentKey) {
+        const pageURL = location.href;
         $('puzzleCard').outerHTML = `
           <main class="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur p-8 shadow-smooth">
             <div class="text-center">
               <div class="text-5xl mb-3">🛑</div>
               <h2 class="text-xl font-extrabold mb-2">Come back for a new puzzle tomorrow!</h2>
-              <p class="text-slate-600">Only one try a day, good on you for being street smart though!</p>
+              <p class="text-slate-600 mb-5">Only one try a day, good on you for being street smart though!</p>
+              <button id="copyLinkLockBtn"
+                class="px-5 py-3 rounded-xl font-semibold bg-emerald-600 text-white hover:bg-emerald-700 shadow-smooth">
+                Copy game link 🔗
+              </button>
             </div>
           </main>`;
+        if ($('copyLinkLockBtn')) $('copyLinkLockBtn').onclick = () => copyGameLink();
         els.themeLabel.textContent = choice ? choice.theme : "—";
         els.streakVal.textContent = storage.streak;
         return;
@@ -227,6 +237,7 @@
       els.doneBtn.onclick   = () => showSummary(choice.theme);
       els.shareAgainBtn.onclick = () => shareResult(choice.theme, lastResultWon === true, p.cheat, storage.streak);
       els.backToTopBtn.onclick  = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+      if (els.copyLinkResultBtn) els.copyLinkResultBtn.onclick = () => copyGameLink();
 
       // Render MCQs
       function renderMCQ(p){
@@ -325,6 +336,20 @@ Try Wall Streak here!
 ${link}`;
         if (navigator.share) navigator.share({ text }).catch(()=>navigator.clipboard.writeText(text));
         else { navigator.clipboard.writeText(text); alert('Result copied! Paste anywhere to share.'); }
+      }
+
+      // Copy game link helper (used on lockout + result)
+      function copyGameLink(){
+        const link = location.href;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(link).then(()=> alert('Link copied! Share Wall Streak with your friends.'));
+        } else {
+          // Fallback
+          const ta = document.createElement('textarea');
+          ta.value = link; document.body.appendChild(ta); ta.select();
+          try { document.execCommand('copy'); alert('Link copied! Share Wall Streak with your friends.'); }
+          finally { document.body.removeChild(ta); }
+        }
       }
     });
   </script>
