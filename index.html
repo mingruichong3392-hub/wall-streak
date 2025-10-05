@@ -5,82 +5,291 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Wall Streak — Keep your streak, beat the Street</title>
   <meta name="description" content="Wall Streak — your daily market puzzle. Keep your streak, beat the Street." />
-  <!-- Social cards -->
   <meta property="og:title" content="Wall Streak — Keep your streak, beat the Street" />
   <meta property="og:description" content="Your daily market puzzle. Monday–Saturday." />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="og-image.png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🔥</text></svg>">
   <style>
-    .card { @apply rounded-2xl border border-slate-700 bg-slate-800/70 p-4 md:p-5; }
-    .btn  { @apply px-6 py-3 rounded-xl font-semibold shadow active:translate-y-px transition; }
-    .btn-green { @apply bg-emerald-600 text-white hover:bg-emerald-700; }
+    .card { @apply rounded-2xl border border-slate-200 bg-white/80 backdrop-blur p-5 shadow; }
+    .btn  { @apply px-5 py-3 rounded-xl font-semibold shadow active:translate-y-px transition; }
+    .btn-primary { @apply bg-emerald-600 text-white hover:bg-emerald-700; }
+    .btn-secondary { @apply bg-slate-100 hover:bg-slate-200; }
+    .tag { @apply inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700; }
+    .mcq { @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-center font-semibold hover:bg-slate-50; }
+    .mcq.correct { @apply border-emerald-500 bg-emerald-50; }
+    .mcq.wrong { @apply border-rose-400 bg-rose-50; }
   </style>
 </head>
-<body class="min-h-screen bg-slate-900 text-slate-100">
+<body class="min-h-screen bg-slate-50 text-slate-900">
   <div class="mx-auto max-w-xl px-4 py-8">
-
     <!-- Header -->
     <header class="mb-6 flex items-center justify-between">
-      <div>
-        <h1 class="text-3xl font-black tracking-tight flex items-center gap-2">
-          WALL STREAK <span class="text-orange-400">🔥</span>
-          <span class="ml-2 text-base font-bold text-slate-300">14</span>
-        </h1>
-        <p class="text-sm text-slate-400 -mt-1">Keep your streak, beat the Street</p>
+      <div class="flex items-center gap-3">
+        <div class="text-2xl">🔥</div>
+        <div>
+          <h1 class="text-2xl font-extrabold tracking-tight">WALL STREAK</h1>
+          <p class="text-xs text-slate-500 -mt-1">Keep your streak, beat the Street</p>
+        </div>
       </div>
+      <div class="tag">Streak: <span id="streakVal">0</span> 🔥</div>
     </header>
 
-    <!-- Prompt card -->
-    <section class="card mb-4">
-      <p class="text-slate-200 leading-relaxed">
-        This company’s revenue surged during the pandemic from e-commerce growth, but its operating margins remain thin. Guess the ticker.
-      </p>
+    <!-- Meta -->
+    <section class="mb-4 flex items-center justify-between">
+      <div class="tag">Theme: <span id="themeLabel">—</span></div>
+      <div class="text-xs text-slate-500" id="dateLabel"></div>
     </section>
 
-    <!-- Input mock -->
-    <section class="card mb-6">
-      <input disabled value="AMZN"
-             class="w-full rounded-xl border border-slate-700 bg-slate-900 text-slate-200 px-4 py-3 tracking-widest text-center font-bold" />
-    </section>
+    <!-- Puzzle -->
+    <main class="card" id="puzzleCard">
+      <p class="mb-4 text-lg font-semibold" id="prompt">Loading today’s puzzle…</p>
+
+      <!-- MCQ grid -->
+      <div id="mcqContainer" class="grid grid-cols-2 gap-3 mb-4"></div>
+
+      <div class="flex items-center gap-3">
+        <button id="revealBtn" class="btn btn-secondary">Give up & reveal</button>
+      </div>
+
+      <p id="feedback" class="mt-4 text-sm font-semibold"></p>
+    </main>
 
     <!-- Result -->
-    <div class="text-center mb-4">
-      <h2 class="text-2xl font-extrabold">You beat the Street!</h2>
-      <div class="mt-1 text-slate-400 text-xs font-bold">ANSWER:</div>
-      <div class="text-xl font-extrabold tracking-wide mt-0.5">AMZN (Amazon)</div>
-    </div>
-
-    <!-- Street Cheat box -->
-    <section class="rounded-2xl border-2 border-orange-500 p-5 mb-8">
-      <div class="text-orange-400 font-black tracking-wide text-lg mb-1">STREET CHEAT OF THE DAY</div>
-      <p class="text-slate-100 text-base leading-relaxed">
-        Revenue growth is exciting, but profits pay the bills. Always also check net income, because investors / shareholders get paid last.
+    <section id="resultCard" class="card mt-6 hidden">
+      <h2 class="text-xl font-extrabold mb-1" id="resultTitle">You beat the Street!</h2>
+      <p class="text-sm text-slate-600 mb-3">
+        Answer: <span id="answerText" class="font-semibold"></span>
       </p>
+
+      <div class="rounded-xl border border-amber-300 bg-amber-50 p-4">
+        <div class="text-amber-700 font-black tracking-wide text-sm mb-1">STREET CHEAT OF THE DAY</div>
+        <p id="cheatText" class="text-amber-900"></p>
+      </div>
+
+      <div class="mt-4 flex flex-wrap items-center gap-3">
+        <button id="shareBtn" class="btn btn-secondary">Share result</button>
+        <button id="nextBtn" class="btn btn-primary">Done</button>
+      </div>
     </section>
 
-    <!-- Share -->
-    <div class="flex justify-center">
-      <button id="shareBtn" class="btn btn-green w-48">SHARE</button>
-    </div>
-
-    <!-- Footer -->
-    <footer class="mt-10 text-center text-xs text-slate-500">
-      Preview layout — full game launches Monday. © <span id="year"></span> Wall Streak
+    <footer class="mt-10 text-center text-xs text-slate-400">
+      © <span id="year"></span> Wall Streak — MVP
     </footer>
   </div>
 
   <script>
-    document.getElementById('year').textContent = new Date().getFullYear();
-    const text = "Wall Streak 14 🔥\nWed (fundamental): ✅\nStreet Cheat: Revenue ≠ profit 💸";
-    document.getElementById('shareBtn').onclick = () => {
-      if (navigator.share) navigator.share({ text }).catch(() => navigator.clipboard.writeText(text));
-      else { navigator.clipboard.writeText(text); alert('Copied! Paste anywhere to share.'); }
+    // ---------- Utilities ----------
+    function getUTCDateKey() {
+      const now = new Date();
+      return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 86400000; // days since epoch
+    }
+    function hashCode(str) { let h = 0; for (let i=0; i<str.length; i++) { h = ((h<<5)-h) + str.charCodeAt(i); h|=0; } return h; }
+    function nextMondayEndLocal() {
+      const now = new Date();
+      const dow = now.getDay(); // 0 Sun .. 6 Sat
+      const delta = (1 - dow + 7) % 7; // days until Monday (0 if Monday)
+      const target = new Date(now);
+      target.setDate(now.getDate() + delta);
+      target.setHours(23,59,59,999);
+      return target;
+    }
+    function todayIsSunday() { return new Date().getDay() === 0; } // 0 = Sun
+
+    // ---------- Themes & Puzzles (MCQ) ----------
+    const THEMES = ["Market News", "Valuation", "Fundamental Analysis", "Technical Analysis", "Behavioral", "Economics"];
+
+    const PUZZLES = [
+      // Monday — Market News
+      {
+        theme: "Market News",
+        prompt: "This US government announced a shutdown on the 30 September 2025. Since the 1980s, how many government shutdowns have there been?",
+        options: ["8","10","12","15"],
+        answer: "10",
+        answerDisplay: "10",
+        cheat: "Government shutdowns are more frequent than most people think. Their impact on stocks is usually short-lived — no need for panic."
+      },
+      // Tuesday — Valuation
+      {
+        theme: "Valuation",
+        prompt: "This bank trades at a Price-to-Book ratio under 1.0, suggesting the market values it below its assets. Guess the ticker.",
+        options: ["JPM","GS","C","MS"],
+        answer: "C",
+        answerDisplay: "C (Citigroup)",
+        cheat: "P/B ≈ 1 means market ≈ book value. Below 1 may signal undervaluation — or real risk. Always look beyond headlines."
+      },
+      // Wednesday — Fundamental
+      {
+        theme: "Fundamental Analysis",
+        prompt: "This company’s revenue surged during the pandemic from e-commerce growth, but its operating margins remain thin. Guess the ticker.",
+        options: ["AMZN","EBAY","SHOP","WMT"],
+        answer: "AMZN",
+        answerDisplay: "AMZN (Amazon)",
+        cheat: "Revenue growth is exciting, but profits pay the bills. Always also check net income, because investors / shareholders get paid last."
+      },
+      // Thursday — Technical
+      {
+        theme: "Technical Analysis",
+        prompt: "The stock’s 50-day moving average crossed above the 200-day moving average. What’s this signal called?",
+        options: ["Golden Cross","Death Cross","Double Bottom","Breakout"],
+        answer: "Golden Cross",
+        answerDisplay: "Golden Cross",
+        cheat: "Technical signals like the Golden Cross show momentum shifts — but know whether you’re trading or investing."
+      },
+      // Friday — Behavioral
+      {
+        theme: "Behavioral",
+        prompt: "An investor keeps buying meme stocks because everyone online is hyping them up. What bias is this?",
+        options: ["Overconfidence","Anchoring","Herding","Recency"],
+        answer: "Herding",
+        answerDisplay: "Herding",
+        cheat: "Following the crowd can be costly. Ask if price moves are driven by fundamentals or just momentum."
+      },
+      // Saturday — Economics
+      {
+        theme: "Economics",
+        prompt: "This country reported inflation over 8% in 2022, leading its central bank to raise interest rates aggressively. Guess the country.",
+        options: ["Germany","Japan","United States","UK"],
+        answer: "United States",
+        answerDisplay: "United States",
+        cheat: "High inflation usually forces rate hikes — cooling demand but pressuring housing and growth stocks."
+      }
+    ];
+
+    // ---------- App State ----------
+    const storage = {
+      get streak() { return parseInt(localStorage.getItem('ws_streak') || '0', 10); },
+      set streak(v) { localStorage.setItem('ws_streak', String(v)); },
+      get lastPlayedKey() { return localStorage.getItem('ws_lastKey'); },
+      set lastPlayedKey(k) { localStorage.setItem('ws_lastKey', k); },
     };
+
+    const els = {
+      themeLabel: document.getElementById('themeLabel'),
+      dateLabel: document.getElementById('dateLabel'),
+      streakVal: document.getElementById('streakVal'),
+      prompt: document.getElementById('prompt'),
+      mcqContainer: document.getElementById('mcqContainer'),
+      revealBtn: document.getElementById('revealBtn'),
+      feedback: document.getElementById('feedback'),
+      resultCard: document.getElementById('resultCard'),
+      resultTitle: document.getElementById('resultTitle'),
+      answerText: document.getElementById('answerText'),
+      cheatText: document.getElementById('cheatText'),
+      shareBtn: document.getElementById('shareBtn'),
+      nextBtn: document.getElementById('nextBtn'),
+      year: document.getElementById('year'),
+      puzzleCard: document.getElementById('puzzleCard'),
+    };
+
+    // Meta
+    const today = new Date();
+    els.year.textContent = today.getFullYear();
+    els.dateLabel.textContent = today.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
+
+    // ---------- Choose today's puzzle ----------
+    function themeForTodayNormal() {
+      const dow = new Date().getDay(); // 0 Sun .. 6 Sat
+      if (dow === 0) return null;
+      return ["Market News","Valuation","Fundamental Analysis","Technical Analysis","Behavioral","Economics"][dow - 1];
+    }
+
+    // Live-test rule: Show Monday puzzle NOW until next Monday 23:59:59 local.
+    function chooseTodayPuzzle() {
+      const now = new Date();
+      const mondayEnd = nextMondayEndLocal();
+      // If it's Sunday and we want to allow testing, still show Monday until the coming Monday ends
+      if (now < mondayEnd) {
+        const p = PUZZLES.find(x => x.theme === "Market News"); // Monday
+        return { key: String(getUTCDateKey()), puzzle: p, forcedTheme: "Market News" };
+      }
+      // After that window, follow normal rotation
+      const theme = themeForTodayNormal();
+      if (!theme) return null;
+      const p = PUZZLES.find(x => x.theme === theme);
+      return { key: String(getUTCDateKey()), puzzle: p, forcedTheme: theme };
+    }
+
+    const choice = chooseTodayPuzzle();
+    const currentKey = choice ? choice.key : null;
+
+    if (!choice) {
+      // Sunday rest (outside the early-test window)
+      els.puzzleCard.innerHTML = `
+        <div class="text-center">
+          <div class="text-4xl mb-2">😎</div>
+          <h2 class="text-xl font-bold">No puzzle today</h2>
+          <p class="text-slate-600">Wall Streak runs Monday–Saturday. See you tomorrow!</p>
+        </div>`;
+      els.themeLabel.textContent = "Sunday — Rest Day";
+    } else {
+      const p = choice.puzzle;
+      els.themeLabel.textContent = choice.forcedTheme;
+      els.streakVal.textContent = storage.streak;
+      renderMCQ(p);
+      els.revealBtn.onclick = () => giveUp(p);
+      els.shareBtn.onclick = () => shareResult(p.theme, true, p.cheat, storage.streak);
+      els.nextBtn.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ---------- Render MCQs ----------
+    function renderMCQ(p) {
+      els.prompt.textContent = p.prompt;
+      els.feedback.textContent = '';
+      els.resultCard.classList.add('hidden');
+      els.mcqContainer.innerHTML = '';
+      p.options.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'mcq';
+        btn.textContent = opt;
+        btn.onclick = () => checkMCQ(opt, p, btn);
+        els.mcqContainer.appendChild(btn);
+      });
+    }
+
+    function normalize(s) { return (s||'').trim().toUpperCase(); }
+
+    function checkMCQ(value, p, btnEl) {
+      const correct = normalize(value) === normalize(p.answer);
+      if (correct) {
+        btnEl.classList.remove('wrong'); btnEl.classList.add('correct');
+        if (storage.lastPlayedKey !== currentKey) {
+          storage.streak = storage.streak + 1;
+          storage.lastPlayedKey = currentKey;
+        }
+        showResult(true, p);
+      } else {
+        btnEl.classList.add('wrong');
+        els.feedback.textContent = 'Not quite — try again.';
+      }
+      els.streakVal.textContent = storage.streak;
+    }
+
+    function giveUp(p) {
+      if (storage.lastPlayedKey !== currentKey) {
+        storage.streak = 0;
+        storage.lastPlayedKey = currentKey;
+      }
+      els.streakVal.textContent = storage.streak;
+      showResult(false, p);
+    }
+
+    function showResult(won, p) {
+      els.resultTitle.textContent = won ? 'You beat the Street!' : 'Today you got Street-schooled!';
+      els.answerText.textContent = p.answerDisplay || p.answer;
+      els.cheatText.textContent = p.cheat;
+      els.resultCard.classList.remove('hidden');
+    }
+
+    function shareResult(theme, won, cheat, streak) {
+      const text = `Wall Streak ${streak} 🔥\n${theme}: ${won ? '✅' : '❌'}\nStreet Cheat: ${cheat}`;
+      if (navigator.share) navigator.share({ text }).catch(() => navigator.clipboard.writeText(text));
+      else { navigator.clipboard.writeText(text); alert('Result copied! Paste anywhere to share.'); }
+    }
   </script>
 </body>
 </html>
+
 
