@@ -18,9 +18,25 @@
     .btn-primary { @apply bg-emerald-600 text-white hover:bg-emerald-700; }
     .btn-secondary { @apply bg-slate-100 hover:bg-slate-200; }
     .tag { @apply inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700; }
-    .mcq { @apply w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-center font-semibold hover:bg-slate-50; }
+
+    /* Colored MCQ pills */
+    .mcq { @apply w-full rounded-xl px-4 py-3 text-center font-semibold border transition; }
+    .mcq-a { @apply bg-indigo-100  border-indigo-300  hover:bg-indigo-200; }
+    .mcq-b { @apply bg-sky-100     border-sky-300     hover:bg-sky-200; }
+    .mcq-c { @apply bg-emerald-100 border-emerald-300 hover:bg-emerald-200; }
+    .mcq-d { @apply bg-amber-100   border-amber-300   hover:bg-amber-200; }
     .mcq.correct { @apply border-emerald-500 bg-emerald-50; }
-    .mcq.wrong { @apply border-rose-400 bg-rose-50; }
+    .mcq.wrong   { @apply border-rose-400    bg-rose-50; }
+
+    /* Highlight Give up */
+    .btn-reveal { @apply bg-rose-100 text-rose-700 border border-rose-300 hover:bg-rose-200; }
+
+    /* Result boxes (replace card) */
+    .resultBox { @apply rounded-2xl p-5 border-2; }
+    .result-success { @apply bg-emerald-50 border-emerald-400; }
+    .result-fail    { @apply bg-rose-50    border-rose-400; }
+    .result-title   { @apply text-xl font-extrabold flex items-center gap-2 mb-1; }
+    .result-sub     { @apply text-sm text-slate-700 mb-3; }
   </style>
 </head>
 <body class="min-h-screen bg-slate-50 text-slate-900">
@@ -51,16 +67,16 @@
       <div id="mcqContainer" class="grid grid-cols-2 gap-3 mb-4"></div>
 
       <div class="flex items-center gap-3">
-        <button id="revealBtn" class="btn btn-secondary">Give up & reveal</button>
+        <button id="revealBtn" class="btn btn-reveal">Give up & reveal</button>
       </div>
 
       <p id="feedback" class="mt-4 text-sm font-semibold"></p>
     </main>
 
-    <!-- Result -->
-    <section id="resultCard" class="card mt-6 hidden">
-      <h2 class="text-xl font-extrabold mb-1" id="resultTitle">You beat the Street!</h2>
-      <p class="text-sm text-slate-600 mb-3">
+    <!-- Result Box (replaces white card) -->
+    <section id="resultBox" class="resultBox hidden">
+      <div id="resultTitle" class="result-title"></div>
+      <p class="result-sub">
         Answer: <span id="answerText" class="font-semibold"></span>
       </p>
 
@@ -71,7 +87,22 @@
 
       <div class="mt-4 flex flex-wrap items-center gap-3">
         <button id="shareBtn" class="btn btn-secondary">Share result</button>
-        <button id="nextBtn" class="btn btn-primary">Done</button>
+        <button id="doneBtn" class="btn btn-primary">Done</button>
+      </div>
+    </section>
+
+    <!-- Streak Summary -->
+    <section id="summaryCard" class="card mt-6 hidden">
+      <h3 class="text-xl font-extrabold mb-2">Your Streak</h3>
+      <p class="text-slate-700 mb-4">
+        Current streak: <span id="summaryStreak" class="font-bold"></span> 🔥
+      </p>
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4 mb-4">
+        <p id="summaryLine" class="text-slate-700"></p>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="shareAgainBtn" class="btn btn-secondary">Share again</button>
+        <button id="backToTopBtn" class="btn">Back to top</button>
       </div>
     </section>
 
@@ -84,9 +115,8 @@
     // ---------- Utilities ----------
     function getUTCDateKey() {
       const now = new Date();
-      return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 86400000; // days since epoch
+      return Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 86400000;
     }
-    function hashCode(str) { let h = 0; for (let i=0; i<str.length; i++) { h = ((h<<5)-h) + str.charCodeAt(i); h|=0; } return h; }
     function nextMondayEndLocal() {
       const now = new Date();
       const dow = now.getDay(); // 0 Sun .. 6 Sat
@@ -96,11 +126,8 @@
       target.setHours(23,59,59,999);
       return target;
     }
-    function todayIsSunday() { return new Date().getDay() === 0; } // 0 = Sun
 
-    // ---------- Themes & Puzzles (MCQ) ----------
-    const THEMES = ["Market News", "Valuation", "Fundamental Analysis", "Technical Analysis", "Behavioral", "Economics"];
-
+    // ---------- Puzzles (MCQ, Mon–Sat) ----------
     const PUZZLES = [
       // Monday — Market News
       {
@@ -158,7 +185,7 @@
       }
     ];
 
-    // ---------- App State ----------
+    // ---------- State ----------
     const storage = {
       get streak() { return parseInt(localStorage.getItem('ws_streak') || '0', 10); },
       set streak(v) { localStorage.setItem('ws_streak', String(v)); },
@@ -174,49 +201,58 @@
       mcqContainer: document.getElementById('mcqContainer'),
       revealBtn: document.getElementById('revealBtn'),
       feedback: document.getElementById('feedback'),
-      resultCard: document.getElementById('resultCard'),
+      resultBox: document.getElementById('resultBox'),
       resultTitle: document.getElementById('resultTitle'),
       answerText: document.getElementById('answerText'),
       cheatText: document.getElementById('cheatText'),
       shareBtn: document.getElementById('shareBtn'),
-      nextBtn: document.getElementById('nextBtn'),
+      doneBtn: document.getElementById('doneBtn'),
+      summaryCard: document.getElementById('summaryCard'),
+      summaryStreak: document.getElementById('summaryStreak'),
+      summaryLine: document.getElementById('summaryLine'),
+      shareAgainBtn: document.getElementById('shareAgainBtn'),
+      backToTopBtn: document.getElementById('backToTopBtn'),
       year: document.getElementById('year'),
       puzzleCard: document.getElementById('puzzleCard'),
     };
 
-    // Meta
     const today = new Date();
     els.year.textContent = today.getFullYear();
     els.dateLabel.textContent = today.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' });
 
-    // ---------- Choose today's puzzle ----------
-    function themeForTodayNormal() {
-      const dow = new Date().getDay(); // 0 Sun .. 6 Sat
-      if (dow === 0) return null;
-      return ["Market News","Valuation","Fundamental Analysis","Technical Analysis","Behavioral","Economics"][dow - 1];
-    }
+    let lastResultWon = null; // for summary/share
 
-    // Live-test rule: Show Monday puzzle NOW until next Monday 23:59:59 local.
+    // ---------- Live-test Monday until next Monday 23:59 ----------
+    function themeForTodayNormal() {
+      const dow = new Date().getDay(); // 0 Sun..6 Sat
+      return ["Sunday","Market News","Valuation","Fundamental Analysis","Technical Analysis","Behavioral","Economics"][dow];
+    }
+    function nextMondayEndLocal() {
+      const now = new Date();
+      const dow = now.getDay();
+      const delta = (1 - dow + 7) % 7; // days until Monday
+      const target = new Date(now);
+      target.setDate(now.getDate() + delta);
+      target.setHours(23,59,59,999);
+      return target;
+    }
     function chooseTodayPuzzle() {
       const now = new Date();
       const mondayEnd = nextMondayEndLocal();
-      // If it's Sunday and we want to allow testing, still show Monday until the coming Monday ends
       if (now < mondayEnd) {
-        const p = PUZZLES.find(x => x.theme === "Market News"); // Monday
-        return { key: String(getUTCDateKey()), puzzle: p, forcedTheme: "Market News" };
+        const p = PUZZLES.find(x => x.theme === "Market News");
+        return { key: String(getUTCDateKey()), puzzle: p, theme: "Market News" };
       }
-      // After that window, follow normal rotation
       const theme = themeForTodayNormal();
-      if (!theme) return null;
+      if (theme === "Sunday") return null;
       const p = PUZZLES.find(x => x.theme === theme);
-      return { key: String(getUTCDateKey()), puzzle: p, forcedTheme: theme };
+      return { key: String(getUTCDateKey()), puzzle: p, theme };
     }
 
     const choice = chooseTodayPuzzle();
     const currentKey = choice ? choice.key : null;
 
     if (!choice) {
-      // Sunday rest (outside the early-test window)
       els.puzzleCard.innerHTML = `
         <div class="text-center">
           <div class="text-4xl mb-2">😎</div>
@@ -226,23 +262,28 @@
       els.themeLabel.textContent = "Sunday — Rest Day";
     } else {
       const p = choice.puzzle;
-      els.themeLabel.textContent = choice.forcedTheme;
+      els.themeLabel.textContent = choice.theme;
       els.streakVal.textContent = storage.streak;
       renderMCQ(p);
       els.revealBtn.onclick = () => giveUp(p);
-      els.shareBtn.onclick = () => shareResult(p.theme, true, p.cheat, storage.streak);
-      els.nextBtn.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+      els.shareBtn.onclick = () => shareResult(p.theme, lastResultWon === true, p.cheat, storage.streak);
+      els.doneBtn.onclick = () => showSummary(choice.theme);
+      els.shareAgainBtn.onclick = () => shareResult(choice.theme, lastResultWon === true, p.cheat, storage.streak);
+      els.backToTopBtn.onclick = () => window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     // ---------- Render MCQs ----------
     function renderMCQ(p) {
       els.prompt.textContent = p.prompt;
       els.feedback.textContent = '';
-      els.resultCard.classList.add('hidden');
+      els.resultBox.className = 'resultBox hidden';
+      els.summaryCard.classList.add('hidden');
       els.mcqContainer.innerHTML = '';
-      p.options.forEach(opt => {
+
+      const colorClasses = ['mcq-a','mcq-b','mcq-c','mcq-d'];
+      p.options.forEach((opt, i) => {
         const btn = document.createElement('button');
-        btn.className = 'mcq';
+        btn.className = `mcq ${colorClasses[i % colorClasses.length]}`;
         btn.textContent = opt;
         btn.onclick = () => checkMCQ(opt, p, btn);
         els.mcqContainer.appendChild(btn);
@@ -250,6 +291,10 @@
     }
 
     function normalize(s) { return (s||'').trim().toUpperCase(); }
+
+    function lockMCQ() {
+      Array.from(els.mcqContainer.children).forEach(b => b.disabled = true);
+    }
 
     function checkMCQ(value, p, btnEl) {
       const correct = normalize(value) === normalize(p.answer);
@@ -259,10 +304,13 @@
           storage.streak = storage.streak + 1;
           storage.lastPlayedKey = currentKey;
         }
+        lastResultWon = true;
+        lockMCQ();
         showResult(true, p);
       } else {
         btnEl.classList.add('wrong');
         els.feedback.textContent = 'Not quite — try again.';
+        lastResultWon = false;
       }
       els.streakVal.textContent = storage.streak;
     }
@@ -273,23 +321,44 @@
         storage.lastPlayedKey = currentKey;
       }
       els.streakVal.textContent = storage.streak;
+      lastResultWon = false;
+      lockMCQ();
       showResult(false, p);
     }
 
+    // ---------- Result box (green/red with icons) ----------
     function showResult(won, p) {
-      els.resultTitle.textContent = won ? 'You beat the Street!' : 'Today you got Street-schooled!';
       els.answerText.textContent = p.answerDisplay || p.answer;
-      els.cheatText.textContent = p.cheat;
-      els.resultCard.classList.remove('hidden');
+      els.cheatText.textContent  = p.cheat;
+
+      els.resultBox.classList.remove('hidden','result-success','result-fail');
+      els.resultBox.classList.add(won ? 'result-success' : 'result-fail');
+
+      els.resultTitle.innerHTML = won
+        ? `<span>✅</span><span>You beat the Street!</span>`
+        : `<span>❌</span><span>Today you got Street-schooled!</span>`;
     }
 
+    // ---------- Summary ----------
+    function showSummary(theme) {
+      els.summaryStreak.textContent = storage.streak;
+      const mark = lastResultWon ? '✅' : '❌';
+      els.summaryLine.textContent = `${theme}: ${mark} — Keep your streak, beat the Street!`;
+      els.summaryCard.classList.remove('hidden');
+      window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+    }
+
+    // ---------- Share ----------
     function shareResult(theme, won, cheat, streak) {
-      const text = `Wall Streak ${streak} 🔥\n${theme}: ${won ? '✅' : '❌'}\nStreet Cheat: ${cheat}`;
+      const text = `Wall Streak ${streak} 🔥
+${theme}: ${won ? '✅' : '❌'}
+Street Cheat: ${cheat}`;
       if (navigator.share) navigator.share({ text }).catch(() => navigator.clipboard.writeText(text));
       else { navigator.clipboard.writeText(text); alert('Result copied! Paste anywhere to share.'); }
     }
   </script>
 </body>
 </html>
+
 
 
