@@ -98,6 +98,7 @@
       function getUTCDateKey(){ const n=new Date(); return Date.UTC(n.getUTCFullYear(),n.getUTCMonth(),n.getUTCDate())/86400000; }
       function nextMondayEndLocal(){ const n=new Date(), d=n.getDay(), t=new Date(n); t.setDate(n.getDate()+((1-d+7)%7)); t.setHours(23,59,59,999); return t; }
 
+      // Puzzles (MCQ, Mon–Sat)
       const PUZZLES = [
         { theme:"Market News",
           prompt:"This US government announced a shutdown on the 30 September 2025. Since the 1980s, how many government shutdowns have there been?",
@@ -137,6 +138,7 @@
           cheat:"High inflation usually forces rate hikes — cooling demand but pressuring housing and growth stocks." }
       ];
 
+      // State
       const storage = {
         get streak(){ return parseInt(localStorage.getItem('ws_streak')||'0',10); },
         set streak(v){ localStorage.setItem('ws_streak', String(v)); },
@@ -167,12 +169,14 @@
         puzzleCard: $('puzzleCard'),
       };
 
+      // Meta text
       const today = new Date();
       els.year.textContent = today.getFullYear();
       els.dateLabel.textContent = today.toLocaleDateString(undefined,{weekday:'long',year:'numeric',month:'short',day:'numeric'});
 
       let lastResultWon = null;
 
+      // Rotation helpers
       function themeForTodayNormal(){
         const dow=new Date().getDay();
         return ["Sunday","Market News","Valuation","Fundamental Analysis","Technical Analysis","Behavioral","Economics"][dow];
@@ -186,6 +190,21 @@
 
       const choice = chooseTodayPuzzle();
       const currentKey = choice ? choice.key : null;
+
+      // NEW: One-try-per-day guard (full-screen message)
+      if (storage.lastPlayedKey === currentKey) {
+        $('puzzleCard').outerHTML = `
+          <main class="rounded-2xl border border-slate-200 bg-white/80 backdrop-blur p-8 shadow-smooth">
+            <div class="text-center">
+              <div class="text-5xl mb-3">🛑</div>
+              <h2 class="text-xl font-extrabold mb-2">Come back for a new puzzle tomorrow!</h2>
+              <p class="text-slate-600">Only one try a day, good on you for being street smart though!</p>
+            </div>
+          </main>`;
+        els.themeLabel.textContent = choice ? choice.theme : "—";
+        els.streakVal.textContent = storage.streak;
+        return;
+      }
 
       if (!choice){
         els.puzzleCard.innerHTML = `
@@ -209,7 +228,7 @@
       els.shareAgainBtn.onclick = () => shareResult(choice.theme, lastResultWon === true, p.cheat, storage.streak);
       els.backToTopBtn.onclick  = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
-      // ---- MCQs ----
+      // Render MCQs
       function renderMCQ(p){
         els.prompt.textContent = p.prompt;
         els.feedback.textContent = '';
@@ -235,7 +254,7 @@
 
       function lockMCQ(){ Array.from(els.mcqContainer.children).forEach(b=>b.disabled=true); }
 
-      // CHANGE #1: Wrong answer = instant fail (no retries)
+      // Instant fail on wrong answer
       function checkMCQ(value,p,btnEl){
         const correct = normalize(value) === normalize(p.answer);
         if (correct){
@@ -248,7 +267,6 @@
           lockMCQ();
           showResult(true,p);
         } else {
-          // immediately fail the day
           btnEl.classList.add('border-rose-400','bg-rose-50');
           if (storage.lastPlayedKey !== currentKey){
             storage.streak = 0;
@@ -272,6 +290,7 @@
         showResult(false,p);
       }
 
+      // Result box
       function showResult(won,p){
         els.answerText.textContent = p.answerDisplay || p.answer;
         els.cheatText.textContent  = p.cheat;
@@ -286,6 +305,7 @@
         }
       }
 
+      // Summary
       function showSummary(theme){
         els.summaryStreak.textContent = storage.streak;
         const mark = lastResultWon ? '✅' : '❌';
@@ -294,7 +314,7 @@
         window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
       }
 
-      // CHANGE #2: Share text includes game URL with "Try Wall Streak here!"
+      // Share (includes link)
       function shareResult(theme, won, cheat, streak){
         const link = location.href;
         const text = `Wall Streak ${streak} 🔥
